@@ -158,7 +158,10 @@ def test_children_type():
 
 
 def parse_node_option_1(elem):
-    """Try to parse the node tree using the first_child and next_sibling properties."""
+    """Try to parse the node tree using the `first_child` and `next_sibling` properties.
+    This test could be fixed by making sure that nested XML is not always parsed as `YXmlText` and are `YXmlElement`s when appropriate.
+    It might also be able to be fixed by expanding `YXmlFragment` functionality and having all of the children be `YXmlFragment`s.
+    """
     result = dict(elem.attributes())
 
     if isinstance(elem, Y.YXmlText):
@@ -175,7 +178,8 @@ def parse_node_option_1(elem):
 
 
 def parse_node_option_2(elem):
-    """Try to parse the node tree using a tree walker."""
+    """Try to parse the node tree using a tree walker.
+    It likely requires many of the same fixes as method 1."""
     elems_to_dicts = {elem: dict(elem.attributes())}
 
     for descendant_elem in elem.tree_walker:
@@ -193,7 +197,8 @@ def parse_node_option_2(elem):
 
 
 def parse_node_option_3(elem):
-    """Try to parse the tree using the yet unimplemented to_delta method, which is the only way to get it to work in JS."""
+    """Try to parse the tree using the yet unimplemented `to_delta` method, which is the only way to get it to work in JS.
+    This ctest could be fixed by implementing `to_delta`."""
     result = dict(elem.attributes())
 
     if hasattr(elem, "first_child"):
