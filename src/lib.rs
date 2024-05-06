@@ -36,5 +36,6 @@ pub fn y_py(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(encode_state_vector))?;
     m.add_wrapped(wrap_pyfunction!(encode_state_as_update))?;
     m.add_wrapped(wrap_pyfunction!(apply_update))?;
+    m.add_wrapped(wrap_pyfunction!(update_to_nodes))?;
     Ok(())
 }

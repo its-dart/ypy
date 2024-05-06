@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
 
@@ -12,9 +13,11 @@ use crate::y_xml::YXmlFragment;
 use crate::y_xml::YXmlText;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
+use pyo3::types::PyDict;
 use pyo3::types::PyTuple;
+use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::Doc;
+use yrs::*;
 use yrs::OffsetKind;
 use yrs::Options;
 use yrs::SubscriptionId;
@@ -413,6 +416,35 @@ pub fn apply_update(doc: &mut YDoc, diff: Vec<u8>) -> PyResult<()> {
     YTransaction::new(txn).apply_v1(diff)?;
 
     Ok(())
+}
+
+#[pyfunction]
+pub fn update_to_nodes(diff: Vec<u8>) -> PyObject {
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("name");
+    let mut txn = doc.transact_mut(); 
+    text.push(&mut txn, "Hello from yrs!");
+    text.format(&mut txn, 11, 3, HashMap::from([
+    ("link".into(), "https://github.com/y-crdt/y-crdt".into())
+    ]));
+
+    let remote_doc = Doc::new();
+
+    // only difference from the basic example--added `mut` and the observer
+    let mut remote_text = remote_doc.get_or_insert_text("name");
+    remote_text.observe_deep(|_txn, _events| {
+        println!("observer triggered");
+    });
+
+    let mut remote_txn = remote_doc.transact_mut();
+    let state_vector = remote_txn.state_vector();
+    let bytes = txn.encode_diff_v1(&state_vector);
+    let update = Update::decode_v1(&bytes).unwrap();
+    remote_txn.apply_update(update);
+    println!("{}", remote_text.get_string(&remote_txn));
+
+    Python::with_gil(|py| PyDict::new(py).into())
+
 }
 
 #[pyclass(unsendable)]
