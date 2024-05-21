@@ -12,8 +12,15 @@ crate-type = ["cdylib"]
 
 [dependencies]
 lib0 = "0.16.10"
-yrs = "0.16.10"
+yrs = { git = "https://github.com/its-dart/y-crdt.git", branch = "v0.16.10" }
+
+[dev-dependencies]
+assert-json-diff = "2.0.2"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = { version = "1.0.79", features = ["unbounded_depth"] }
 
 [dependencies.pyo3]
 version = "0.19.2"
-features = ["extension-module"]
+# https://stackoverflow.com/a/71757467
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
