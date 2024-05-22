@@ -1,4 +1,3 @@
-import pytest
 import y_py as Y
 
 
