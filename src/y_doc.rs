@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
 
+use crate::type_conversions::ToPython;
 use crate::y_array::YArray;
 use crate::y_map::YMap;
 use crate::y_text::YText;
@@ -11,19 +12,23 @@ use crate::y_transaction::YTransactionInner;
 use crate::y_xml::YXmlElement;
 use crate::y_xml::YXmlFragment;
 use crate::y_xml::YXmlText;
+use lib0::any::Any;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use pyo3::types::PyDict;
 use pyo3::types::PyTuple;
+use yrs::block::ItemContent;
+use yrs::types::{BranchPtr, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_TEXT};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::*;
 use yrs::OffsetKind;
 use yrs::Options;
 use yrs::SubscriptionId;
 use yrs::Transact;
 use yrs::TransactionCleanupEvent;
 use yrs::TransactionMut;
+use yrs::{
+    Doc, MapRef, Transaction, Update, Xml, XmlFragment, XmlFragmentRef, XmlNode, XmlTextRef,
+};
 
 pub trait WithDoc<T> {
     fn with_doc(self, doc: Rc<RefCell<YDocInner>>) -> T;
@@ -418,33 +423,149 @@ pub fn apply_update(doc: &mut YDoc, diff: Vec<u8>) -> PyResult<()> {
     Ok(())
 }
 
+pub fn process_xml_text_node(txn: &Transaction, xml_text_ref: &XmlTextRef) -> Any {
+    let mut result: HashMap<String, Any> = HashMap::new();
+    // Update attributes of the current Text XmlNode
+    let xml_text_map_ref: MapRef = xml_text_ref.clone().into();
+    if let Any::Map(at) = xml_text_map_ref.to_json(txn) {
+        for (k, v) in at.iter() {
+            result.insert(k.to_string(), v.clone());
+        }
+    }
+    if let Some(xml_text_children) = xml_text_ref.successors() {
+        let mut children: Vec<Any> = vec![];
+        let mut child_result: HashMap<String, Any> = HashMap::new();
+        /* xml_text_children contains a sequence of ItemContent instances:
+           ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
+           ItemContent::String(SplittableString) => "a"
+           ItemContent::String(SplittableString) => " "
+           ...
+           ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
+           ItemContent::String(SplittableString) => "b"
+        */
+        for child in xml_text_children {
+            match &child {
+                ItemContent::Type(c) => {
+                    let ptr = BranchPtr::from(c);
+                    match ptr.type_ref() {
+                        TYPE_REFS_MAP => {
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result)));
+                                child_result = HashMap::new();
+                            }
+                            if let Any::Map(at) = MapRef::from(ptr).to_json(txn) {
+                                for (k, v) in at.iter() {
+                                    child_result.insert(k.to_string(), v.clone());
+                                }
+                            }
+                        }
+                        TYPE_REFS_XML_TEXT => {
+                            let child_xml_text_ref = XmlTextRef::from(ptr);
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result)));
+                                child_result = HashMap::new();
+                            }
+                            children.push(process_xml_text_node(txn, &child_xml_text_ref));
+                        }
+                        _ => {
+                            panic!("Unexpected type ref: {:?}", ptr.type_ref());
+                        }
+                    }
+                }
+                ItemContent::String(child_text_part) => {
+                    if !child_result.is_empty() {
+                        let mut child_text = child_result
+                            .get("text")
+                            .unwrap_or(&Any::String("".to_string().into()))
+                            .to_string();
+                        child_text.push_str(child_text_part.as_str());
+                        child_result.insert("text".to_string(), Any::String(child_text.into()));
+                    }
+                }
+                ItemContent::Deleted(_) => (),
+                _ => {
+                    eprintln!("Ignored child of XmlTextRef: {:?}", child);
+                }
+            }
+        }
+        if !child_result.is_empty() {
+            children.push(Any::Map(Box::new(child_result)));
+        }
+        if children.len() > 0 {
+            result.insert(
+                "children".to_string(),
+                Any::Array(children.into_boxed_slice()),
+            );
+        }
+    }
+    Any::Map(Box::new(result))
+}
+
+pub fn process_xml_node(
+    txn: &Transaction,
+    result: &mut HashMap<String, Any>,
+    first_child_maybe: Option<XmlNode>,
+) -> () {
+    let first_child = match first_child_maybe {
+        Some(first_child) => first_child,
+        None => {
+            return;
+        }
+    };
+    let mut children: Vec<Any> = vec![];
+    match first_child {
+        XmlNode::Text(text) => {
+            children.push(process_xml_text_node(txn, &text));
+            text.siblings(txn)
+                .for_each(|sibling: XmlNode| match sibling {
+                    XmlNode::Text(text) => {
+                        children.push(process_xml_text_node(txn, &text));
+                    }
+                    _ => {
+                        eprintln!("Unhandled XmlNode::Text sibling: {:?}", sibling);
+                    }
+                });
+        }
+        XmlNode::Fragment(fragment) => {
+            eprintln!("Unhandled Fragment: {:?}", fragment);
+        }
+        XmlNode::Element(element) => {
+            eprintln!("Unhandled Element: {:?}", element);
+        }
+    }
+    result.insert(
+        "children".to_string(),
+        Any::Array(children.into_boxed_slice()),
+    );
+}
+
+pub fn process_doc(diff: Vec<u8>) -> HashMap<String, Any> {
+    let mut result: HashMap<String, Any> = HashMap::new();
+    let doc: Doc = Doc::new();
+    let root: XmlFragmentRef = doc.get_or_insert_xml_fragment("root");
+    doc.transact_mut()
+        .apply_update(Update::decode_v1(diff.as_slice()).unwrap());
+    let txn: Transaction = doc.transact();
+
+    // Update attributes of the root XmlNode
+    let root_map: MapRef = root.clone().into();
+    if let Any::Map(at) = root_map.to_json(&txn) {
+        for (k, v) in at.iter() {
+            result.insert(k.to_string(), v.clone());
+        }
+    }
+
+    // Process the children of the root XmlNode
+    process_xml_node(&txn, &mut result, root.first_child());
+
+    result
+}
+
 #[pyfunction]
 pub fn update_to_nodes(diff: Vec<u8>) -> PyObject {
-    let doc = Doc::new();
-    let text = doc.get_or_insert_text("name");
-    let mut txn = doc.transact_mut(); 
-    text.push(&mut txn, "Hello from yrs!");
-    text.format(&mut txn, 11, 3, HashMap::from([
-    ("link".into(), "https://github.com/y-crdt/y-crdt".into())
-    ]));
+    let result = process_doc(diff);
 
-    let remote_doc = Doc::new();
-
-    // only difference from the basic example--added `mut` and the observer
-    let mut remote_text = remote_doc.get_or_insert_text("name");
-    remote_text.observe_deep(|_txn, _events| {
-        println!("observer triggered");
-    });
-
-    let mut remote_txn = remote_doc.transact_mut();
-    let state_vector = remote_txn.state_vector();
-    let bytes = txn.encode_diff_v1(&state_vector);
-    let update = Update::decode_v1(&bytes).unwrap();
-    remote_txn.apply_update(update);
-    println!("{}", remote_text.get_string(&remote_txn));
-
-    Python::with_gil(|py| PyDict::new(py).into())
-
+    Python::with_gil(|py| result.into_py(py))
 }
 
 #[pyclass(unsendable)]

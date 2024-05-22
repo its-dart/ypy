@@ -44,139 +44,14 @@ pub fn y_py(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[cfg(test)]
 mod test {
+    use crate::y_doc::process_doc;
     use assert_json_diff::assert_json_eq;
     use lib0::any::Any;
-    use serde_json::{json, to_string_pretty};
-    use std::collections::HashMap;
-    use yrs::block::ItemContent;
-    use yrs::types::{BranchPtr, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_TEXT};
-    use yrs::updates::decoder::Decode;
-    use yrs::{
-        Doc, MapRef, Transact, Transaction, Update, Xml, XmlFragment, XmlFragmentRef, XmlNode,
-        XmlTextRef,
-    };
-
-    fn process_xml_text_node(txn: &Transaction, xml_text_ref: &XmlTextRef) -> Any {
-        let mut result: HashMap<String, Any> = HashMap::new();
-        // Update attributes of the current Text XmlNode
-        let xml_text_map_ref: MapRef = xml_text_ref.clone().into();
-        if let Any::Map(at) = xml_text_map_ref.to_json(txn) {
-            for (k, v) in at.iter() {
-                result.insert(k.to_string(), v.clone());
-            }
-        }
-        if let Some(xml_text_children) = xml_text_ref.successors() {
-            let mut children: Vec<Any> = vec![];
-            let mut child_result: HashMap<String, Any> = HashMap::new();
-            /* xml_text_children contains a sequence of ItemContent instances:
-               ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
-               ItemContent::String(SplittableString) => "a"
-               ItemContent::String(SplittableString) => " "
-               ...
-               ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
-               ItemContent::String(SplittableString) => "b"
-            */
-            for child in xml_text_children {
-                match &child {
-                    ItemContent::Type(c) => {
-                        let ptr = BranchPtr::from(c);
-                        match ptr.type_ref() {
-                            TYPE_REFS_MAP => {
-                                if !child_result.is_empty() {
-                                    children.push(Any::Map(Box::new(child_result)));
-                                    child_result = HashMap::new();
-                                }
-                                if let Any::Map(at) = MapRef::from(ptr).to_json(txn) {
-                                    for (k, v) in at.iter() {
-                                        child_result.insert(k.to_string(), v.clone());
-                                    }
-                                }
-                            }
-                            TYPE_REFS_XML_TEXT => {
-                                let child_xml_text_ref = XmlTextRef::from(ptr);
-                                if !child_result.is_empty() {
-                                    children.push(Any::Map(Box::new(child_result)));
-                                    child_result = HashMap::new();
-                                }
-                                children.push(process_xml_text_node(txn, &child_xml_text_ref));
-                            }
-                            _ => {
-                                panic!("Unexpected type ref: {:?}", ptr.type_ref());
-                            }
-                        }
-                    }
-                    ItemContent::String(child_text_part) => {
-                        if !child_result.is_empty() {
-                            let mut child_text = child_result
-                                .get("text")
-                                .unwrap_or(&Any::String("".to_string().into()))
-                                .to_string();
-                            child_text.push_str(child_text_part.as_str());
-                            child_result.insert("text".to_string(), Any::String(child_text.into()));
-                        }
-                    }
-                    _ => {
-                        eprintln!("Ignored child of XmlTextRef: {:?}", child);
-                    }
-                }
-            }
-            if !child_result.is_empty() {
-                children.push(Any::Map(Box::new(child_result)));
-            }
-            if children.len() > 0 {
-                result.insert(
-                    "children".to_string(),
-                    Any::Array(children.into_boxed_slice()),
-                );
-            }
-        }
-        Any::Map(Box::new(result))
-    }
-
-    fn process_xml_node(
-        txn: &Transaction,
-        result: &mut HashMap<String, Any>,
-        first_child_maybe: Option<XmlNode>,
-    ) -> () {
-        let first_child = match first_child_maybe {
-            Some(first_child) => first_child,
-            None => {
-                return;
-            }
-        };
-        let mut children: Vec<Any> = vec![];
-        match first_child {
-            XmlNode::Text(text) => {
-                children.push(process_xml_text_node(txn, &text));
-                text.siblings(txn)
-                    .for_each(|sibling: XmlNode| match sibling {
-                        XmlNode::Text(text) => {
-                            children.push(process_xml_text_node(txn, &text));
-                        }
-                        XmlNode::Fragment(fragment) => {
-                            eprintln!("Unhandled Fragment: {:?}", fragment);
-                        }
-                        XmlNode::Element(element) => {
-                            eprintln!("Unhandled Element: {:?}", element);
-                        }
-                    });
-            }
-            XmlNode::Fragment(fragment) => {
-                eprintln!("Unhandled Fragment: {:?}", fragment);
-            }
-            XmlNode::Element(element) => {
-                eprintln!("Unhandled Element: {:?}", element);
-            }
-        }
-        result.insert(
-            "children".to_string(),
-            Any::Array(children.into_boxed_slice()),
-        );
-    }
+    use serde_json::{from_str, json, to_string_pretty, Value};
 
     #[test]
     fn parse_nested_xml_text_nodes() {
-        const RAW_LEXICAL_STATE_AS_UPDATE: &[u8] = &[
+        let raw_lexical_state_as_update: Vec<u8> = vec![
             1, 97, 156, 181, 228, 207, 14, 0, 40, 1, 4, 114, 111, 111, 116, 5, 95, 95, 100, 105,
             114, 1, 119, 3, 108, 116, 114, 7, 1, 4, 114, 111, 111, 116, 6, 40, 0, 156, 181, 228,
             207, 14, 1, 6, 95, 95, 116, 121, 112, 101, 1, 119, 9, 112, 97, 114, 97, 103, 114, 97,
@@ -258,7 +133,7 @@ mod test {
             105, 108, 1, 125, 0, 132, 156, 181, 228, 207, 14, 106, 1, 101, 1, 156, 181, 228, 207,
             14, 9, 17, 1, 25, 1, 27, 7, 42, 2, 53, 6, 63, 1, 77, 1, 87, 12, 104, 1,
         ];
-        let expected_json: serde_json::Value = json!({
+        let expected_json: Value = json!({
             "__dir": "ltr",
             "children": [
                 {
@@ -369,30 +244,14 @@ mod test {
             ]
         });
 
-        let mut result: HashMap<String, Any> = HashMap::new();
-        let doc: Doc = Doc::new();
-        let root: XmlFragmentRef = doc.get_or_insert_xml_fragment("root");
-        doc.transact_mut()
-            .apply_update(Update::decode_v1(RAW_LEXICAL_STATE_AS_UPDATE).unwrap());
-        let txn: Transaction = doc.transact();
-
-        // Update attributes of the root XmlNode
-        let root_map: MapRef = root.clone().into();
-        if let Any::Map(at) = root_map.to_json(&txn) {
-            for (k, v) in at.iter() {
-                result.insert(k.to_string(), v.clone());
-            }
-        }
-
-        // Process the children of the root XmlNode
-        process_xml_node(&txn, &mut result, root.first_child());
-
+        let result = process_doc(raw_lexical_state_as_update);
         let mut result_buf = String::new();
+
         Any::Map(Box::new(result)).to_json(&mut result_buf);
-        let result_json: serde_json::Value = serde_json::from_str(&result_buf).unwrap();
+        let result_json: Value = from_str(&result_buf).unwrap();
 
         println!("Result:\n{}", to_string_pretty(&result_json).unwrap());
 
-        assert_json_eq!(expected_json, result_json);
+        assert_json_eq!(result_json, expected_json);
     }
 }
