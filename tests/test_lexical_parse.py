@@ -123,4 +123,10 @@ UPDATE_BYTES = [
 
 def test_lexical_parse():
     """This tests fully converting the Y format to JSON."""
-    assert EXPECTED_JSON == {"root": Y.update_to_nodes(UPDATE_BYTES)}
+    ydoc = Y.YDoc()
+    Y.apply_update(ydoc, UPDATE_BYTES)
+
+    # with ydoc.begin_transaction() as txn:
+    root = ydoc.get_xml_fragment("root")
+
+    assert EXPECTED_JSON == {"root": root.to_dict()}
