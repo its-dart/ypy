@@ -54,10 +54,11 @@ def test_lexical_parse_in_reverse_direction():
         for key, value in node_json.items():
             if key == "children" and isinstance(value, list):
                 nodes.extend(value)
-            elif key in ["__detail", "__format", "__indent", "__mode", "__start", "__value"]:
-                node_json[key] = int(value)
-            elif key == "__dir" and value == "None":
-                node_json[key] = None
+            else:
+                if key in ["__detail", "__format", "__indent", "__mode", "__start", "__value"]:
+                    node_json[key] = int(value)
+                elif key == "__dir" and value == "None":
+                    node_json[key] = None
 
     print(f"{json.dumps(root_json, indent=4)}")
 
