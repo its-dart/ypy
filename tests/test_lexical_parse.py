@@ -40,24 +40,24 @@ def test_lexical_parse_in_reverse_direction():
                             ychild = ynode.push_xml_element(txn, child["__type"])
                         nodes.append((ychild, child))
                 else:
-                    # NOTE: set_attribute supports only string values
+                    # TODO simplify this, needed because set_attribute supports only string values
                     ynode.set_attribute(txn, key, str(value))
 
     root_json = yroot.to_dict()
 
-    # Fix temporarily value types of some attributes in the resulting JSON to match the expected JSON
-    # 'cause set_attribute method in ypy supports only setting string values
+    # TODO remove this temporary fix
+    # it's needed because value types of some attributes in the resulting JSON don't match the expected JSON
+    # because set_attribute method in ypy supports only setting string values
     nodes = [root_json]
     while nodes:
         node_json = nodes.pop(0)
         for key, value in node_json.items():
             if key == "children" and isinstance(value, list):
-                    nodes.extend(value)
-            else:
-                if key in ["__detail", "__format", "__indent", "__mode", "__start", "__value"]:
-                    node_json[key] = int(value)
-                elif key == "__dir" and value == "None":
-                    node_json[key] = None
+                nodes.extend(value)
+            elif key in ["__detail", "__format", "__indent", "__mode", "__start", "__value"]:
+                node_json[key] = int(value)
+            elif key == "__dir" and value == "None":
+                node_json[key] = None
 
     print(f"{json.dumps(root_json, indent=4)}")
 
