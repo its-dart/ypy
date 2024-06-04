@@ -1,3 +1,4 @@
+use crate::shared_types::CompatiblePyType;
 use crate::shared_types::{SubId, TypeWithDoc};
 use crate::y_doc::{WithDoc, YDocInner};
 use lib0::any::Any;
@@ -375,8 +376,23 @@ impl YXmlElement {
 
     /// Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
     /// `name` already existed on that node, its value with be overridden with a provided one.
-    pub fn set_attribute(&self, txn: &mut YTransaction, name: &str, value: &str) -> PyResult<()> {
-        txn.transact(|txn| self.0.insert_attribute(txn, name, value))
+    pub fn set_attribute(
+        &self,
+        txn: &mut YTransaction,
+        name: &str,
+        value: Py<PyAny>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let compatible_py_type_value: CompatiblePyType =
+                value.extract(py).unwrap_or_else(|err| {
+                    err.restore(py);
+                    CompatiblePyType::None
+                });
+            txn.transact(|txn| {
+                self.0
+                    .insert_attribute(txn, name, Any::try_from(compatible_py_type_value).unwrap())
+            })
+        })
     }
 
     /// Returns a value of an attribute given its `name`. If no attribute with such name existed,
@@ -581,8 +597,23 @@ impl YXmlText {
 
     /// Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
     /// `name` already existed on that node, its value with be overridden with a provided one.
-    pub fn set_attribute(&self, txn: &mut YTransaction, name: &str, value: &str) -> PyResult<()> {
-        txn.transact(|txn| self.0.insert_attribute(txn, name, value))
+    pub fn set_attribute(
+        &self,
+        txn: &mut YTransaction,
+        name: &str,
+        value: Py<PyAny>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let compatible_py_type_value: CompatiblePyType =
+                value.extract(py).unwrap_or_else(|err| {
+                    err.restore(py);
+                    CompatiblePyType::None
+                });
+            txn.transact(|txn| {
+                self.0
+                    .insert_attribute(txn, name, Any::try_from(compatible_py_type_value).unwrap())
+            })
+        })
     }
 
     /// Returns a value of an attribute given its `name`. If no attribute with such name existed,
