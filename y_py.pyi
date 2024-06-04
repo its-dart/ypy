@@ -978,7 +978,7 @@ class YXmlElement:
         Returns:
             A string representation wrapped in YXmlElement
         """
-    def set_attribute(self, txn: YTransaction, name: str, value: str):
+    def set_attribute(self, txn: YTransaction, name: str, value: Any):
         """
         Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
         `name` already existed on that node, its value with be overridden with a provided one.
@@ -1151,7 +1151,7 @@ class YXmlText:
         Returns:
             The string representation wrapped in 'YXmlText()'
         """
-    def set_attribute(self, txn: YTransaction, name: str, value: str):
+    def set_attribute(self, txn: YTransaction, name: str, value: Any):
         """
         Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
         `name` already existed on that node, its value with be overridden with a provided one.
