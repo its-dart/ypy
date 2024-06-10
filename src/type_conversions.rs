@@ -308,18 +308,10 @@ impl<'a> TryFrom<CompatiblePyType<'a>> for Any {
     type Error = PyErr;
 
     fn try_from(py_type: CompatiblePyType<'a>) -> Result<Self, Self::Error> {
-        const MAX_JS_NUMBER: i64 = 2_i64.pow(53) - 1;
         match py_type {
             CompatiblePyType::Bool(b) => Ok(Any::Bool(b.extract()?)),
             CompatiblePyType::String(s) => Ok(Any::String(s.extract::<String>()?.into_boxed_str())),
-            CompatiblePyType::Int(i) => {
-                let num: i64 = i.extract()?;
-                if num > MAX_JS_NUMBER {
-                    Ok(Any::BigInt(num))
-                } else {
-                    Ok(Any::Number(num as f64))
-                }
-            }
+            CompatiblePyType::Int(i) => Ok(Any::BigInt(i.extract()?)),
             CompatiblePyType::Float(f) => Ok(Any::Number(f.extract()?)),
             CompatiblePyType::List(l) => {
                 let result: PyResult<Vec<Any>> = l
