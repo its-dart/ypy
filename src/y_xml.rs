@@ -1,4 +1,4 @@
-use crate::shared_types::CompatiblePyType;
+use crate::shared_types::{CompatiblePyType, YPyType};
 use crate::shared_types::{SubId, TypeWithDoc};
 use crate::y_doc::{WithDoc, YDocInner};
 use lib0::any::Any;
@@ -16,7 +16,7 @@ use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
 use yrs::MapRef;
 use yrs::XmlFragmentRef;
 use yrs::XmlTextRef;
-use yrs::{GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
+use yrs::{GetString, MapPrelim, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
 use yrs::{Observable, SubscriptionId, Text, TransactionMut, XmlFragment, XmlNode};
 
 use crate::shared_types::{DeepSubscription, ShallowSubscription};
@@ -574,6 +574,42 @@ impl YXmlText {
                     })
             })
         })
+    }
+
+    /// Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
+    pub fn insert_xml_text(&self, txn: &mut YTransaction, index: u32) -> PyResult<YXmlText> {
+        txn.transact(|txn| self._insert_xml_text(txn, index))
+    }
+    fn _insert_xml_text(&self, txn: &mut YTransactionInner, index: u32) -> YXmlText {
+        let inner_node = self.0.insert_embed(txn, index, XmlTextPrelim::new(""));
+        YXmlText::new(inner_node, self.0.doc.clone())
+    }
+
+    /// Appends a new instance of `YXmlText` as the last child of this XML node and returns it.
+    pub fn push_xml_text(&self, txn: &mut YTransaction) -> PyResult<YXmlText> {
+        txn.transact(|txn| self._push_xml_text(txn))
+    }
+    fn _push_xml_text(&self, txn: &mut YTransactionInner) -> YXmlText {
+        let index = self._len(txn) as u32;
+        self._insert_xml_text(txn, index)
+    }
+
+    /// Appends a new instance of `YMap` as the last child of this XML node.
+    pub fn push_attributes(&self, txn: &mut YTransaction, attributes: &PyDict) {
+        txn.transact(|txn| self._push_attributes(txn, attributes))
+            .unwrap();
+    }
+    fn _push_attributes(&self, txn: &mut YTransactionInner, attributes: &PyDict) {
+        let index = self._len(txn) as u32;
+        let mut map: HashMap<String, Any> = HashMap::new();
+        for (k, v) in attributes.iter() {
+            let compatible_py_type_value: CompatiblePyType = v.extract().unwrap();
+            map.insert(
+                k.to_string(),
+                Any::try_from(compatible_py_type_value).unwrap(),
+            );
+        }
+        self.0.push_attributes(txn, map);
     }
 
     /// Returns a parent `YXmlElement` node or `undefined` if current node has no parent assigned.
