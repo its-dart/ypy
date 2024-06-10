@@ -1,4 +1,4 @@
-use crate::shared_types::{CompatiblePyType, YPyType};
+use crate::shared_types::CompatiblePyType;
 use crate::shared_types::{SubId, TypeWithDoc};
 use crate::y_doc::{WithDoc, YDocInner};
 use lib0::any::Any;
@@ -16,7 +16,7 @@ use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
 use yrs::MapRef;
 use yrs::XmlFragmentRef;
 use yrs::XmlTextRef;
-use yrs::{GetString, MapPrelim, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
+use yrs::{GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
 use yrs::{Observable, SubscriptionId, Text, TransactionMut, XmlFragment, XmlNode};
 
 use crate::shared_types::{DeepSubscription, ShallowSubscription};
