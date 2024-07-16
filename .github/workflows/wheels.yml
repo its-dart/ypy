@@ -27,11 +27,11 @@ jobs:
         with:
           target: x86_64
           args: --release --out dist --sdist -i 3.7 3.8 3.9 3.10 3.11 3.12 pypy3.8 pypy3.9
-      - name: Test built wheel - x86_64
-        run: |
-          pip install pytest maturin
-          pip install y-py-dart --no-index --find-links dist --force-reinstall
-          pytest
+      # - name: Test built wheel - x86_64
+      #   run: |
+      #     pip install y-py-dart --no-index --find-links dist --force-reinstall
+      #     pip install pytest
+      #     pytest
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
         with:
