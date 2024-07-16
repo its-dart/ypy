@@ -15,7 +15,7 @@ use crate::y_doc::*;
 
 /// Python bindings for Y.rs
 #[pymodule]
-pub fn y_py(_py: Python, m: &PyModule) -> PyResult<()> {
+pub fn y_py_dart(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
     // Data Types

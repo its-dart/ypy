@@ -1,6 +1,6 @@
 from turtle import position
 from p5 import *
-from y_py import YDoc, YArray, AfterTransactionEvent
+from y_py_dart import YDoc, YArray, AfterTransactionEvent
 from client import YDocWSClient
 
 doc: YDoc

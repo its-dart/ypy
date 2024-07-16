@@ -1,6 +1,6 @@
-from y_py import YDoc, AfterTransactionEvent
+from y_py_dart import YDoc, AfterTransactionEvent
 
-import y_py as Y
+import y_py_dart as Y
 import pytest
 
 

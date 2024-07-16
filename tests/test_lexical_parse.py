@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 
-import y_py as Y
+import y_py_dart as Y
 
 # This is the original Lexical data
 EXPECTED_JSON = json.loads(

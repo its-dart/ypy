@@ -1,13 +1,11 @@
 from copy import deepcopy
 import json
 import pytest
-import y_py as Y
-from y_py import YMap, YMapEvent
+import y_py_dart as Y
+from y_py_dart import YMap, YMapEvent
 
 
 def test_get():
-    import y_py as Y
-
     d = Y.YDoc()
     m = d.get_map("map")
 

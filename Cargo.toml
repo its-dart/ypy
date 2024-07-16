@@ -1,13 +1,13 @@
 [package]
 name = "y-py"
-version = "0.6.3-alpha.5"
+version = "0.6.3-alpha.6"
 rust-version = "1.72"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "y_py"
+name = "y_py_dart"
 crate-type = ["cdylib"]
 
 [dependencies]

@@ -1,4 +1,4 @@
-from y_py import YMap, YDoc
+from y_py_dart import YMap, YDoc
 from math import isclose
 
 

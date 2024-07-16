@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 from test_helper import exchange_updates
-from y_py import YArray, YArrayEvent, YDoc
+from y_py_dart import YArray, YArrayEvent, YDoc
 
 
 def test_inserts():

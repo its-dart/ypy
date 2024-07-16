@@ -15,7 +15,7 @@ use yrs::{
 use yrs::{ReadTxn, TransactionMut};
 
 create_exception!(
-    y_py,
+    y_py_dart,
     EncodingException,
     PyException,
     "Occurs due to issues in the encoding/decoding process of y_py updates."

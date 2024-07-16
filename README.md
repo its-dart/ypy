@@ -17,7 +17,7 @@ pip install y-py
 Ypy provides many of the same shared data types as [Yjs](https://docs.yjs.dev/). All objects are shared within a `YDoc` and get modified within a transaction block.
 
 ```python
-import y_py as Y
+import y_py_dart as Y
 
 d1 = Y.YDoc()
 # Create a new YText object in the YDoc

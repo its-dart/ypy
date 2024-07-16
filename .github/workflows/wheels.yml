@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PACKAGE_NAME: y_py
+  PACKAGE_NAME: y_py_dart
 
 jobs:
   macos:
