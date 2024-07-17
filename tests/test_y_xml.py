@@ -1,6 +1,6 @@
 import unittest
 
-import y_py_dart as Y
+import y_py as Y
 from test_helper import exchange_updates
 
 

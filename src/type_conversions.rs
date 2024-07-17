@@ -32,7 +32,7 @@ use crate::y_map::YMapEvent;
 use crate::y_text::YTextEvent;
 use crate::y_xml::{YXmlEvent, YXmlTextEvent};
 
-create_exception!(y_py_dart, MultipleIntegrationError, PyException, "A Ypy data type instance cannot be integrated into multiple YDocs or the same YDoc multiple times");
+create_exception!(y_py, MultipleIntegrationError, PyException, "A Ypy data type instance cannot be integrated into multiple YDocs or the same YDoc multiple times");
 
 pub trait ToPython {
     fn into_py(self, py: Python) -> PyObject;

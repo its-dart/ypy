@@ -1,7 +1,7 @@
 import asyncio
 from time import sleep
 import websockets
-import y_py_dart as Y
+import y_py as Y
 import queue
 import concurrent.futures
 import threading

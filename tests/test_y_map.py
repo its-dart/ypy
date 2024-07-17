@@ -1,8 +1,8 @@
 from copy import deepcopy
 import json
 import pytest
-import y_py_dart as Y
-from y_py_dart import YMap, YMapEvent
+import y_py as Y
+from y_py import YMap, YMapEvent
 
 
 def test_get():

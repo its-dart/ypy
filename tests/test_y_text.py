@@ -1,6 +1,6 @@
 from test_helper import exchange_updates
-import y_py_dart as Y
-from y_py_dart import YText, YTextEvent
+import y_py as Y
+from y_py import YText, YTextEvent
 
 
 def test_to_string():

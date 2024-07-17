@@ -19,8 +19,8 @@ use yrs::types::TypeRef;
 use yrs::SubscriptionId;
 
 // Common errors
-create_exception!(y_py_dart, PreliminaryObservationException, PyException, "Occurs when an observer is attached to a Y type that is not integrated into a YDoc. Y types can only be observed once they have been added to a YDoc.");
-create_exception!(y_py_dart, IntegratedOperationException, PyException, "Occurs when a method requires a type to be integrated (embedded into a YDoc), but is called on a preliminary type.");
+create_exception!(y_py, PreliminaryObservationException, PyException, "Occurs when an observer is attached to a Y type that is not integrated into a YDoc. Y types can only be observed once they have been added to a YDoc.");
+create_exception!(y_py, IntegratedOperationException, PyException, "Occurs when a method requires a type to be integrated (embedded into a YDoc), but is called on a preliminary type.");
 
 /// Creates a default error with a common message string for throwing a `PyErr`.
 pub(crate) trait DefaultPyErr {
