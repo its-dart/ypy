@@ -39,11 +39,12 @@ def test_lexical_parse_in_forward_direction():
     ydoc = Y.YDoc()
     Y.apply_update(ydoc, UPDATE_BYTES)
     yroot = ydoc.get_xml_fragment("root")
-    root_json = yroot.to_dict()
 
-    print(f"{json.dumps(root_json, indent=4)}")
+    result_json = {"root": yroot.to_dict()}
 
-    assert EXPECTED_JSON == {"root": root_json}
+    print(f"{json.dumps(result_json, indent=4)}")
+
+    assert EXPECTED_JSON == result_json
 
 
 def test_lexical_parse_in_reverse_direction():
@@ -75,4 +76,4 @@ def test_lexical_parse_in_reverse_direction():
 
     print(f"{json.dumps(result_json, indent=4)}")
 
-    assert EXPECTED_JSON == {"root": result_json}
+    assert EXPECTED_JSON == result_json
