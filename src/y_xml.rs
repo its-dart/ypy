@@ -11,7 +11,10 @@ use std::ops::Deref;
 use std::rc::Rc;
 use yrs::block::ItemContent;
 use yrs::types::xml::{self, TreeWalker, Xml, XmlEvent, XmlTextEvent};
-use yrs::types::{BranchPtr, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_TEXT};
+use yrs::types::{
+    BranchPtr, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_ELEMENT, TYPE_REFS_XML_FRAGMENT,
+    TYPE_REFS_XML_TEXT,
+};
 use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
 use yrs::MapRef;
 use yrs::XmlFragmentRef;
@@ -67,8 +70,26 @@ pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTe
                             }
                             children.push(process_xml_text_node(txn, &child_xml_text_ref));
                         }
+                        TYPE_REFS_XML_ELEMENT => {
+                            let mut result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(
+                                txn,
+                                &mut result,
+                                &XmlNode::Element(XmlElementRef::from(ptr)),
+                            );
+                            children.push(Any::Map(Box::new(result)));
+                        }
+                        TYPE_REFS_XML_FRAGMENT => {
+                            let mut result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(
+                                txn,
+                                &mut result,
+                                &XmlNode::Fragment(XmlFragmentRef::from(ptr)),
+                            );
+                            children.push(Any::Map(Box::new(result)));
+                        }
                         _ => {
-                            panic!("Unexpected type ref: {:?}", ptr.type_ref());
+                            eprintln!("Unexpected type ref: {:?}", ptr.type_ref());
                         }
                     }
                 }
