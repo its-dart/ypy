@@ -3,7 +3,7 @@ requires = ["maturin>=1.2.3,<2"]
 build-backend = "maturin"
 
 [project]
-name = "y-py"
+name = "y-py-dart"
 description = "Python bindings for the Y-CRDT built from yrs (Rust)"
 license = { file = "LICENSE" }
 authors = [
@@ -30,10 +30,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/y-crdt/ypy"
-Source = "https://github.com/y-crdt/ypy"
-Issues = "https://github.com/y-crdt/ypy/issues"
-Pypi = "https://pypi.org/project/y-py"
+Homepage = "https://github.com/its-dart/ypy"
+Source = "https://github.com/its-dart/ypy"
+Issues = "https://github.com/its-dart/ypy/issues"
+Pypi = "https://pypi.org/project/y-py-dart"
 
 [tool.hatch.envs.test]
 dependencies = ["pytest", "maturin"]
