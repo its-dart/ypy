@@ -1132,6 +1132,15 @@ class YXmlText:
         """
         Inserts a given `chunk` of text into this `YXmlText` instance, starting at a given `index`.
         """
+    def insert_xml_element(
+        self,
+        txn: YTransaction,
+        index: int,
+        name: str,
+    ) -> YXmlElement:
+        """
+        Inserts a new instance of `YXmlElement` as a child of this XML node and returns it.
+        """
     def insert_xml_text(self, txn: YTransaction, index: int) -> YXmlText:
         """
         Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
@@ -1143,6 +1152,10 @@ class YXmlText:
     def push_attributes(self, txn: YTransaction, attributes: dict) -> None:
         """
         Appends a given `chunk` of text at the end of `YXmlText` instance.
+        """
+    def push_xml_element(self, txn: YTransaction, name: str) -> YXmlElement:
+        """
+        Appends a new instance of `YXmlElement` as the last child of this XML node and returns it.
         """
     def push_xml_text(self, txn: YTransaction) -> YXmlText:
         """

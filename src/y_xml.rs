@@ -597,6 +597,35 @@ impl YXmlText {
         })
     }
 
+    /// Inserts a new instance of `YXmlElement` as a child of this XML node and returns it.
+    pub fn insert_xml_element(
+        &self,
+        txn: &mut YTransaction,
+        index: u32,
+        name: &str,
+    ) -> PyResult<YXmlElement> {
+        txn.transact(|txn| self._insert_xml_element(txn, index, name))
+    }
+
+    fn _insert_xml_element(
+        &self,
+        txn: &mut YTransactionInner,
+        index: u32,
+        name: &str,
+    ) -> YXmlElement {
+        let inner_node = self.0.insert_embed(txn, index, XmlElementPrelim::empty(name));
+        YXmlElement::new(inner_node, self.0.doc.clone())
+    }
+    
+    /// Appends a new instance of `YXmlElement` as the last child of this XML node and returns it.
+    pub fn push_xml_element(&self, txn: &mut YTransaction, name: &str) -> PyResult<YXmlElement> {
+        txn.transact(|txn| self._push_xml_element(txn, name))
+    }
+    fn _push_xml_element(&self, txn: &mut YTransactionInner, name: &str) -> YXmlElement {
+        let index = self._len(txn) as u32;
+        self._insert_xml_element(txn, index, name)
+    }
+
     /// Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
     pub fn insert_xml_text(&self, txn: &mut YTransaction, index: u32) -> PyResult<YXmlText> {
         txn.transact(|txn| self._insert_xml_text(txn, index))
