@@ -65,6 +65,7 @@ pub enum CompatiblePyType<'a> {
     String(&'a pytypes::PyString),
     List(&'a pytypes::PyList),
     Dict(&'a pytypes::PyDict),
+    ByteArray(&'a pytypes::PyByteArray),
     YType(YPyType<'a>),
     None,
 }

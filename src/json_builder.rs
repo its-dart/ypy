@@ -60,6 +60,11 @@ impl<'a> JsonBuildable for CompatiblePyType<'a> {
 
                 buffer.push_str("]");
             }
+            CompatiblePyType::ByteArray(bytes) => {
+                return Err(PyTypeError::new_err(
+                    "Binary objects cannot be converted to JSON format"
+                ));
+            }
             CompatiblePyType::Dict(dict) => {
                 buffer.push_str("{");
                 let length = dict.len();
