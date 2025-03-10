@@ -15,6 +15,9 @@ env:
 jobs:
   macos:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [x86_64]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -22,10 +25,10 @@ jobs:
           python-version: '3.11'
           architecture: x64
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build wheels - x86_64
+      - name: Build wheels - ${{ matrix.target }}
         uses: PyO3/maturin-action@v1
         with:
-          target: x86_64
+          target: ${{ matrix.target }}
           args: --release --out dist --sdist -i 3.7 3.8 3.9 3.10 3.11 3.12 pypy3.8 pypy3.9
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
@@ -34,7 +37,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4.6.0
         with:
-          name: wheels - x86_64
+          name: wheels - macos - ${{ matrix.target }}
           path: dist
 
   linux:
@@ -48,7 +51,7 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
-      - name: Build wheels
+      - name: Build wheels ${{ matrix.target }}
         uses: PyO3/maturin-action@v1
         with:
           rust-toolchain: stable
@@ -58,7 +61,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4.6.0
         with:
-          name: wheels - x64
+          name: wheels - linux - ${{ matrix.target }}
           path: dist
 
   linux-cross:
@@ -81,7 +84,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4.6.0
         with:
-          name: wheels - ${{ matrix.target }}
+          name: wheels - linux-cross - ${{ matrix.target }}
           path: dist
 
   pypi-release:
@@ -95,7 +98,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4.1.8
         with:
-          name: wheels
+          name: wheels - linux - x86_64
       - uses: actions/setup-python@v2
       - name: Publish to PyPi
         env:
