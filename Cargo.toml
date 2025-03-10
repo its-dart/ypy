@@ -1,6 +1,6 @@
 [package]
 name = "y-py"
-version = "0.7.0-alpha.1"
+version = "0.6.3-alpha.13"
 rust-version = "1.72"
 edition = "2021"
 
@@ -14,8 +14,8 @@ name = "y_py"
 crate-type = ["cdylib"]
 
 [dependencies]
-yrs = "0.21.3"
+yrs = { git = "https://github.com/its-dart/y-crdt.git", branch = "v0.21.3" }
 
 [dependencies.pyo3]
-version = "0.19.2"
+version = "0.21.0"
 features = ["extension-module"]

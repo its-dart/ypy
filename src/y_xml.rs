@@ -1,20 +1,209 @@
+use crate::shared_types::CompatiblePyType;
 use crate::shared_types::{ObservationId, TypeWithDoc};
+use crate::type_conversions::{events_into_py, ToPython, WithDocToPython};
 use crate::y_doc::{WithDoc, YDocInner};
+use crate::y_transaction::{YTransaction, YTransactionInner};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::ops::Deref;
 use std::rc::Rc;
+use yrs::block::ItemContent;
+use yrs::branch::BranchPtr;
 use yrs::types::xml::{TreeWalker, Xml, XmlEvent, XmlTextEvent};
 use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
+use yrs::types::{
+    ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_ELEMENT, TYPE_REFS_XML_FRAGMENT, TYPE_REFS_XML_TEXT,
+};
+use yrs::MapRef;
 use yrs::XmlFragmentRef;
 use yrs::XmlTextRef;
-use yrs::{GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
+use yrs::{Any, GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
 use yrs::{Observable, Text, TransactionMut, XmlFragment, XmlOut};
 
-use crate::type_conversions::{events_into_py, ToPython, WithDocToPython};
-use crate::y_transaction::{YTransaction, YTransactionInner};
+pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTextRef) -> Any {
+    let mut result: HashMap<String, Any> = HashMap::new();
+    // Update attributes of the current Text XmlNode
+    let xml_text_map_ref: MapRef = xml_text_ref.clone().into();
+    if let Any::Map(at) = xml_text_map_ref.to_json(txn) {
+        for (k, v) in at.iter() {
+            result.insert(k.to_string(), v.clone());
+        }
+    }
+
+    if let Some(xml_text_children) = xml_text_ref.children() {
+        let mut children: Vec<Any> = vec![];
+        let mut child_result: HashMap<String, Any> = HashMap::new();
+        /* xml_text_children contains a sequence of ItemContent instances:
+           ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
+           ItemContent::String(SplittableString) => "a"
+           ItemContent::String(SplittableString) => " "
+           ...
+           ItemContent::Type(YMap) => {"__type": "text", "__format": 0, "__style": "", "__mode": 0, "__detail": 0}
+           ItemContent::String(SplittableString) => "b"
+        */
+        for child in xml_text_children {
+            match &child {
+                ItemContent::Type(c) => {
+                    let ptr = BranchPtr::from(c);
+                    match ptr.type_ref().kind() {
+                        TYPE_REFS_MAP => {
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result).into()));
+                                child_result = HashMap::new();
+                            }
+                            if let Any::Map(at) = MapRef::from(ptr).to_json(txn) {
+                                for (k, v) in at.iter() {
+                                    child_result.insert(k.to_string(), v.clone());
+                                }
+                            }
+                        }
+                        TYPE_REFS_XML_TEXT => {
+                            let child_xml_text_ref = XmlTextRef::from(ptr);
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result).into()));
+                                child_result = HashMap::new();
+                            }
+                            children.push(process_xml_text_node(txn, &child_xml_text_ref));
+                        }
+                        TYPE_REFS_XML_ELEMENT => {
+                            let mut result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(
+                                txn,
+                                &mut result,
+                                &XmlOut::Element(XmlElementRef::from(ptr)),
+                            );
+                            children.push(Any::Map(Box::new(result).into()));
+                        }
+                        TYPE_REFS_XML_FRAGMENT => {
+                            let mut result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(
+                                txn,
+                                &mut result,
+                                &XmlOut::Fragment(XmlFragmentRef::from(ptr)),
+                            );
+                            children.push(Any::Map(Box::new(result).into()));
+                        }
+                        _ => {
+                            eprintln!("Unexpected type ref: {:?}", ptr.type_ref());
+                        }
+                    }
+                }
+                ItemContent::String(child_text_part) => {
+                    if !child_result.is_empty() {
+                        let mut child_text = child_result
+                            .get("text")
+                            .unwrap_or(&Any::String("".to_string().into()))
+                            .to_string();
+                        child_text.push_str(child_text_part.as_str());
+                        child_result.insert("text".to_string(), Any::String(child_text.into()));
+                    }
+                }
+                ItemContent::Deleted(_) => (),
+                _ => {
+                    eprintln!("Ignored child of XmlTextRef: {:?}", child);
+                }
+            }
+        }
+        if !child_result.is_empty() {
+            children.push(Any::Map(Box::new(child_result).into()));
+        }
+        if !children.is_empty() {
+            result.insert("children".to_string(), Any::Array(children.into()));
+        }
+    }
+    Any::Map(Box::new(result).into())
+}
+
+pub fn process_xml_node(
+    txn: &TransactionMut<'static>,
+    result: &mut HashMap<String, Any>,
+    node: &XmlOut,
+) {
+    fn set_xml_node_attributes(
+        txn: &TransactionMut<'static>,
+        result: &mut HashMap<String, Any>,
+        xml_node_map: &MapRef,
+    ) {
+        if let Any::Map(at) = xml_node_map.to_json(txn) {
+            for (k, v) in at.iter() {
+                result.insert(k.to_string(), v.clone());
+            }
+        }
+    }
+
+    match node {
+        XmlOut::Text(text) => {
+            if let Any::Map(text_node_result) = process_xml_text_node(txn, &text) {
+                for (k, v) in text_node_result.iter() {
+                    result.insert(k.to_string(), v.clone());
+                }
+            };
+        }
+        XmlOut::Fragment(fragment) => {
+            set_xml_node_attributes(txn, result, &fragment.clone().into());
+            if let Some(child_node) = fragment.first_child() {
+                let mut children: Vec<Any> = vec![];
+                let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                process_xml_node(txn, &mut child_node_result, &child_node);
+                children.push(Any::Map(Box::new(child_node_result).into()));
+
+                match child_node.clone() {
+                    XmlOut::Text(child_node_element) => {
+                        for child_node in child_node_element.siblings(txn) {
+                            let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(txn, &mut child_node_result, &child_node);
+                            children.push(Any::Map(Box::new(child_node_result).into()));
+                        }
+                    }
+                    XmlOut::Element(child_node_element) => {
+                        for child_node in child_node_element.siblings(txn) {
+                            let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(txn, &mut child_node_result, &child_node);
+                            children.push(Any::Map(Box::new(child_node_result).into()));
+                        }
+                    }
+                    _ => {
+                        panic!("Unhandled XmlOut::Fragment child: {:?}", child_node)
+                    }
+                }
+                result.insert("children".to_string(), Any::Array(children.into()));
+            }
+        }
+        XmlOut::Element(element) => {
+            set_xml_node_attributes(txn, result, &element.clone().into());
+            if let Some(child_node) = element.first_child() {
+                let mut children: Vec<Any> = vec![];
+                let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                process_xml_node(txn, &mut child_node_result, &child_node);
+                children.push(Any::Map(Box::new(child_node_result).into()));
+
+                match child_node.clone() {
+                    XmlOut::Text(child_node_element) => {
+                        for child_node in child_node_element.siblings(txn) {
+                            let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(txn, &mut child_node_result, &child_node);
+                            children.push(Any::Map(Box::new(child_node_result).into()));
+                        }
+                    }
+                    XmlOut::Element(child_node_element) => {
+                        for child_node in child_node_element.siblings(txn) {
+                            let mut child_node_result: HashMap<String, Any> = HashMap::new();
+                            process_xml_node(txn, &mut child_node_result, &child_node);
+                            children.push(Any::Map(Box::new(child_node_result).into()));
+                        }
+                    }
+                    _ => {
+                        panic!("Unhandled XmlOut::Fragment child: {:?}", child_node)
+                    }
+                }
+                result.insert("children".to_string(), Any::Array(children.into()));
+            }
+        }
+    }
+}
 
 /// XML element data type. It represents an XML node, which can contain key-value attributes
 /// (interpreted as strings) as well as other nested XML elements or rich text (represented by
@@ -180,10 +369,40 @@ impl YXmlElement {
         format!("YXmlElement({})", self.__str__())
     }
 
+    /// Converts contents of this `YXmlElement` instance into a Dict representation.
+    pub fn to_dict(&self) -> PyObject {
+        Python::with_gil(|py| {
+            self.0.with_transaction(|txn| {
+                let mut result: HashMap<String, Any> = HashMap::new();
+                process_xml_node(
+                    txn.deref(),
+                    &mut result,
+                    &XmlOut::Element(self.0.inner.clone()),
+                );
+                result.into_py(py)
+            })
+        })
+    }
+
     /// Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
     /// `name` already existed on that node, its value with be overridden with a provided one.
-    pub fn set_attribute(&self, txn: &mut YTransaction, name: &str, value: &str) -> PyResult<()> {
-        txn.transact(|txn| self.0.insert_attribute(txn, name, value))
+    pub fn set_attribute(
+        &self,
+        txn: &mut YTransaction,
+        name: &str,
+        value: Py<PyAny>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let compatible_py_type_value: CompatiblePyType =
+                value.extract(py).unwrap_or_else(|err| {
+                    err.restore(py);
+                    CompatiblePyType::None
+                });
+            txn.transact(|txn| {
+                self.0
+                    .insert_attribute(txn, name, Any::try_from(compatible_py_type_value).unwrap())
+            })
+        })
     }
 
     /// Returns a value of an attribute given its `name`. If no attribute with such name existed,
@@ -303,6 +522,55 @@ impl YXmlText {
         self.0.len(txn) as usize
     }
 
+    /// Inserts a new instance of `YXmlElement` as a child of this XML node and returns it.
+    pub fn insert_xml_element(
+        &self,
+        txn: &mut YTransaction,
+        index: u32,
+        name: &str,
+    ) -> PyResult<YXmlElement> {
+        txn.transact(|txn| self._insert_xml_element(txn, index, name))
+    }
+
+    fn _insert_xml_element(
+        &self,
+        txn: &mut YTransactionInner,
+        index: u32,
+        name: &str,
+    ) -> YXmlElement {
+        let inner_node = self
+            .0
+            .insert_embed(txn, index, XmlElementPrelim::empty(name));
+        YXmlElement::new(inner_node, self.0.doc.clone())
+    }
+
+    /// Appends a new instance of `YXmlElement` as the last child of this XML node and returns it.
+    pub fn push_xml_element(&self, txn: &mut YTransaction, name: &str) -> PyResult<YXmlElement> {
+        txn.transact(|txn| self._push_xml_element(txn, name))
+    }
+    fn _push_xml_element(&self, txn: &mut YTransactionInner, name: &str) -> YXmlElement {
+        let index = self._len(txn) as u32;
+        self._insert_xml_element(txn, index, name)
+    }
+
+    /// Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
+    pub fn insert_xml_text(&self, txn: &mut YTransaction, index: u32) -> PyResult<YXmlText> {
+        txn.transact(|txn| self._insert_xml_text(txn, index))
+    }
+    fn _insert_xml_text(&self, txn: &mut YTransactionInner, index: u32) -> YXmlText {
+        let inner_node = self.0.insert_embed(txn, index, XmlTextPrelim::new(""));
+        YXmlText::new(inner_node, self.0.doc.clone())
+    }
+
+    /// Appends a new instance of `YXmlText` as the last child of this XML node and returns it.
+    pub fn push_xml_text(&self, txn: &mut YTransaction) -> PyResult<YXmlText> {
+        txn.transact(|txn| self._push_xml_text(txn))
+    }
+    fn _push_xml_text(&self, txn: &mut YTransactionInner) -> YXmlText {
+        let index = self._len(txn) as u32;
+        self._insert_xml_text(txn, index)
+    }
+
     /// Inserts a given `chunk` of text into this `YXmlText` instance, starting at a given `index`.
     pub fn insert(&self, txn: &mut YTransaction, index: i32, chunk: &str) -> PyResult<()> {
         txn.transact(|txn| self._insert(txn, index, chunk))
@@ -382,8 +650,23 @@ impl YXmlText {
 
     /// Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
     /// `name` already existed on that node, its value with be overridden with a provided one.
-    pub fn set_attribute(&self, txn: &mut YTransaction, name: &str, value: &str) -> PyResult<()> {
-        txn.transact(|txn| self.0.insert_attribute(txn, name, value))
+    pub fn set_attribute(
+        &self,
+        txn: &mut YTransaction,
+        name: &str,
+        value: Py<PyAny>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let compatible_py_type_value: CompatiblePyType =
+                value.extract(py).unwrap_or_else(|err| {
+                    err.restore(py);
+                    CompatiblePyType::None
+                });
+            txn.transact(|txn| {
+                self.0
+                    .insert_attribute(txn, name, Any::try_from(compatible_py_type_value).unwrap())
+            })
+        })
     }
 
     /// Returns a value of an attribute given its `name`. If no attribute with such name existed,
@@ -564,6 +847,42 @@ impl YXmlFragment {
     /// Returns a string representation of this XML node.
     pub fn __str__(&self) -> String {
         self.0.with_transaction(|txn| self.0.get_string(txn))
+    }
+
+    /// Converts contents of this `YXmlFragment` instance into a Dict representation.
+    pub fn to_dict(&self) -> PyObject {
+        Python::with_gil(|py| {
+            self.0.with_transaction(|txn| {
+                let mut result: HashMap<String, Any> = HashMap::new();
+                process_xml_node(
+                    txn.deref(),
+                    &mut result,
+                    &XmlOut::Fragment(self.0.inner.clone()),
+                );
+                result.into_py(py)
+            })
+        })
+    }
+
+    /// Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
+    /// `name` already existed on that node, its value with be overridden with a provided one.
+    pub fn set_attribute(
+        &self,
+        txn: &mut YTransaction,
+        name: &str,
+        value: Py<PyAny>,
+    ) -> PyResult<()> {
+        Python::with_gil(|py| {
+            let compatible_py_type_value: CompatiblePyType =
+                value.extract(py).unwrap_or_else(|err| {
+                    err.restore(py);
+                    CompatiblePyType::None
+                });
+            txn.transact(|txn| {
+                self.0
+                    .insert_attribute(txn, name, Any::try_from(compatible_py_type_value).unwrap())
+            })
+        })
     }
 
     /// Returns an iterator that enables a deep traversal of this XML node - starting from first

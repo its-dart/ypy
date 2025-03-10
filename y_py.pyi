@@ -978,7 +978,7 @@ class YXmlElement:
         Returns:
             A string representation wrapped in YXmlElement
         """
-    def set_attribute(self, txn: YTransaction, name: str, value: str):
+    def set_attribute(self, txn: YTransaction, name: str, value: Any):
         """
         Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
         `name` already existed on that node, its value with be overridden with a provided one.
@@ -1085,6 +1085,15 @@ class YXmlFragment:
         Returns:
             A string representation of this YXmlFragment
         """
+    def set_attribute(self, txn: YTransaction, name: str, value: Any):
+        """
+        Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
+        `name` already existed on that node, its value with be overridden with a provided one.
+        """
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts contents of this `YXmlFragment` instance into a Dict representation.
+        """
     def get(self, index: int) -> Union[YXmlText, YXmlElement]:
         """
         Returns the child node at the specified index.
@@ -1142,9 +1151,30 @@ class YXmlText:
         """
         Inserts a given `chunk` of text into this `YXmlText` instance, starting at a given `index`.
         """
+    def insert_xml_element(
+        self,
+        txn: YTransaction,
+        index: int,
+        name: str,
+    ) -> YXmlElement:
+        """
+        Inserts a new instance of `YXmlElement` as a child of this XML node and returns it.
+        """
+    def insert_xml_text(self, txn: YTransaction, index: int) -> YXmlText:
+        """
+        Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
+        """
     def push(self, txn: YTransaction, chunk: str):
         """
         Appends a given `chunk` of text at the end of `YXmlText` instance.
+        """
+    def push_xml_element(self, txn: YTransaction, name: str) -> YXmlElement:
+        """
+        Appends a new instance of `YXmlElement` as the last child of this XML node and returns it.
+        """
+    def push_xml_text(self, txn: YTransaction) -> YXmlText:
+        """
+        Appends a new instance of `YXmlText` as the last child of this XML node and returns it.
         """
     def delete(self, txn: YTransaction, index: int, length: int):
         """
@@ -1161,7 +1191,7 @@ class YXmlText:
         Returns:
             The string representation wrapped in 'YXmlText()'
         """
-    def set_attribute(self, txn: YTransaction, name: str, value: str):
+    def set_attribute(self, txn: YTransaction, name: str, value: Any):
         """
         Sets a `name` and `value` as new attribute for this XML node. If an attribute with the same
         `name` already existed on that node, its value with be overridden with a provided one.

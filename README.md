@@ -9,7 +9,7 @@ Ypy is a Python binding for Y-CRDT. It provides distributed data types that enab
 ## Installation
 
 ```
-pip install y-py
+pip install y-py-dart
 ```
 
 ## Getting Started

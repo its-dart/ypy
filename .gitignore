@@ -11,3 +11,5 @@ docs/_*
 *.pyc
 dist
 .idea
+.venv
+node_modules
