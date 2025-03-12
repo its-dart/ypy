@@ -74,6 +74,16 @@ class YDoc:
         If there was an instance with this name, but it was of different type, it will be projected
         onto `YMap` instance.
         """
+    def get_xml_element(self, name: str) -> YXmlElement:
+        """
+        Returns:
+            A `YXmlElement` shared data type, that's accessible for subsequent accesses using given `name`.
+
+        If there was no instance with this name before, it will be created and then returned.
+
+        If there was an instance with this name, but it was of different type, it will be projected
+        onto `YXmlElement` instance.
+        """
     def get_xml_fragment(self, name: str) -> YXmlFragment:
         """
         Returns:

@@ -38,7 +38,7 @@ def test_lexical_parse_in_forward_direction():
     """This tests fully converting the Y format to JSON."""
     ydoc = Y.YDoc()
     Y.apply_update(ydoc, UPDATE_BYTES)
-    yroot = ydoc.get_xml_fragment("root")
+    yroot = ydoc.get_xml_element("root")
 
     result_json = {"root": yroot.to_dict()}
 
@@ -52,7 +52,7 @@ def test_lexical_parse_in_forward_direction():
 def test_lexical_parse_in_reverse_direction():
     """This tests fully converting the Y format to JSON."""
     ydoc = Y.YDoc()
-    yroot = ydoc.get_xml_fragment("root")
+    yroot = ydoc.get_xml_element("root")
 
     with ydoc.begin_transaction() as txn:
         nodes: list[tuple[Y.YXmlElement | Y.YXmlFragment | Y.YXmlText | dict, dict]] = [

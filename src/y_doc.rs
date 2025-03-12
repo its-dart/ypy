@@ -8,7 +8,7 @@ use crate::y_map::YMap;
 use crate::y_text::YText;
 use crate::y_transaction::YTransaction;
 use crate::y_transaction::YTransactionInner;
-use crate::y_xml::YXmlFragment;
+use crate::y_xml::{YXmlElement, YXmlFragment};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::types::PyTuple;
@@ -227,6 +227,23 @@ impl YDoc {
             .borrow()
             .doc
             .get_or_insert_map(name)
+            .with_doc(self.0.clone()))
+    }
+
+    /// Returns a `YXmlElement` shared data type, that's accessible for subsequent accesses using
+    /// given `name`.
+    ///
+    /// If there was no instance with this name before, it will be created and then returned.
+    ///
+    /// If there was an instance with this name, but it was of different type, it will be projected
+    /// onto `YXmlElement` instance.
+    pub fn get_xml_element(&mut self, name: &str) -> PyResult<YXmlElement> {
+        self.guard_store()?;
+        Ok(self
+            .0
+            .borrow()
+            .doc
+            .get_or_insert_xml_element(name)
             .with_doc(self.0.clone()))
     }
 
