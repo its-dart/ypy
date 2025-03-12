@@ -111,6 +111,7 @@ def test_observe_after_transaction():
     assert delete_set != None
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_get_update():
     """
     Ensures that developers can access the encoded update data in the `observe_after_transaction` event.

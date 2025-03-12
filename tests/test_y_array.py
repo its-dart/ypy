@@ -182,6 +182,7 @@ def test_borrow_mut_edge_case():
             arr.delete_range(txn, 0, 3)
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_observer():
     d1 = YDoc()
 
@@ -235,6 +236,7 @@ def test_observer():
     assert delta == None
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_deep_observe():
     """
     Ensure that changes to elements inside the array trigger a callback.

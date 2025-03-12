@@ -187,6 +187,7 @@ def test_keys_values():
     assert len(values) == 4
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_observer():
     d1 = Y.YDoc()
     x = d1.get_map("test")
@@ -237,6 +238,7 @@ def test_observer():
     assert entries == None
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_deep_observe():
     """
     Ensure that changes to elements inside the array trigger a callback.

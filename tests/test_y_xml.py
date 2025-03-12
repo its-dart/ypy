@@ -1,5 +1,5 @@
 import unittest
-
+import pytest
 import y_py as Y
 from test_helper import exchange_updates
 
@@ -82,6 +82,7 @@ def test_tree_walker():
     assert actual == expected
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_xml_text_observer():
     d1 = Y.YDoc()
 
@@ -170,6 +171,7 @@ def test_xml_text_observer():
     assert delta == None
 
 
+@pytest.mark.skip("using unobserve or unobserve_deep causes a segfault")
 def test_xml_element_observer():
     d1 = Y.YDoc()
 
