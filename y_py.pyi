@@ -1007,6 +1007,10 @@ class YXmlElement:
         Returns an iterator that enables to traverse over all attributes of this XML node in
         unspecified order.
         """
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Converts contents of this `YXmlElement` instance into a Dict representation.
+        """
     def tree_walker(self) -> YXmlTreeWalker:
         """
         Returns an iterator that enables a deep traversal of this XML node - starting from first
