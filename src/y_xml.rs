@@ -24,14 +24,12 @@ use yrs::{Any, GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
 use yrs::{Observable, Text, TransactionMut, XmlFragment, XmlOut};
 
 pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTextRef) -> Any {
-    let mut result: HashMap<String, Any> = HashMap::new();
-    // Update attributes of the current Text XmlNode
     let xml_text_map_ref: MapRef = xml_text_ref.clone().into();
-    if let Any::Map(at) = xml_text_map_ref.to_json(txn) {
-        for (k, v) in at.iter() {
-            result.insert(k.to_string(), v.clone());
-        }
-    }
+    let mut result: HashMap<String, Any> = if let Any::Map(at) = xml_text_map_ref.to_json(txn) {
+        at.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
+    } else {
+        HashMap::new()
+    };
 
     if let Some(xml_text_children) = xml_text_ref.children() {
         let mut children: Vec<Any> = vec![];
@@ -107,7 +105,13 @@ pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTe
                 }
             }
         }
-        if !child_result.is_empty() {
+        if child_result.is_empty() {
+            let str = xml_text_ref.get_string(txn);
+            if !str.is_empty() {
+                result.insert("text".to_string(), Any::String(str.into()));
+            }
+        }
+        else {
             children.push(Any::Map(Box::new(child_result).into()));
         }
         if !children.is_empty() {

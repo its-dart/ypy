@@ -38,7 +38,7 @@ def test_lexical_parse_in_forward_direction():
     """This tests fully converting the Y format to JSON."""
     ydoc = Y.YDoc()
     Y.apply_update(ydoc, UPDATE_BYTES)
-    yroot = ydoc.get_xml_element("root")
+    yroot = ydoc.get_xml_fragment("root")
 
     result_json = {"root": yroot.to_dict()}
 
@@ -52,7 +52,7 @@ def test_lexical_parse_in_forward_direction():
 def test_lexical_parse_in_reverse_direction():
     """This tests fully converting the Y format to JSON."""
     ydoc = Y.YDoc()
-    yroot = ydoc.get_xml_element("root")
+    yroot = ydoc.get_xml_fragment("root")
 
     with ydoc.begin_transaction() as txn:
         nodes: list[tuple[Y.YXmlElement | Y.YXmlFragment | Y.YXmlText | dict, dict]] = [
@@ -63,8 +63,16 @@ def test_lexical_parse_in_reverse_direction():
             children = node_json.get("children", None)
             if isinstance(children, list):
                 for child in children:
-                    ychild = ynode.push_xml_text(txn)
-                    nodes.append((ychild, child))
+                    if "text" in child:
+                        text = child.pop("text", None)
+                        ychild = ynode.push_xml_text(txn)
+                        for attr, value in child.items():
+                            ychild.set_attribute(txn, attr, value)
+                        ychild.push(txn, text)
+                        continue
+                    else:
+                        ychild = ynode.push_xml_text(txn)
+                        nodes.append((ychild, child))
 
             for key, value in node_json.items():
                 ynode.set_attribute(txn, key, value)
