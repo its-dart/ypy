@@ -1,6 +1,6 @@
 [package]
 name = "y-py"
-version = "0.7.0-alpha.1"
+version = "0.6.3-alpha.19"
 rust-version = "1.72"
 edition = "2021"
 
@@ -12,8 +12,17 @@ crate-type = ["cdylib"]
 
 [dependencies]
 lib0 = "0.16.10"
-yrs = "0.16.10"
+yrs = { git = "https://github.com/its-dart/y-crdt.git", branch = "v0.16.10" }
+
+[dev-dependencies]
+assert-json-diff = "2.0.2"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = { version = "1.0.79", features = ["unbounded_depth"] }
 
 [dependencies.pyo3]
-version = "0.19.2"
+version = "0.21.0"
+# Make the extension-module feature optional and default.
+# See https://pyo3.rs/v0.21.2/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror for more details
+# extension-module = ["pyo3/extension-module"]
+# default = ["extension-module"]
 features = ["extension-module"]
