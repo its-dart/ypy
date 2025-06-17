@@ -59,7 +59,7 @@ assert value == "hello world!"
 ### Prerequisites
 
 - [Rust](https://www.rust-lang.org/tools/install)
-- [Python](https://www.python.org/downloads/) (3.7+)
+- [Python](https://www.python.org/downloads/) (3.8+)
 
 ### Setup
 
@@ -75,7 +75,7 @@ pytest
 
 ### Using Hatch (Optional)
 
-For testing across multiple Python versions (3.7-3.12):
+For testing across multiple Python versions (3.8-3.12):
 
 ```bash
 hatch run test:maturin develop
