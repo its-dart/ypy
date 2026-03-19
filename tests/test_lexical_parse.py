@@ -10,8 +10,8 @@ EXPECTED_JSON = json.loads(
 
 # This is the Y update representation of the Lexical data
 #
-# YDoc loaded from Lexical data is represented internally as a tree of YXmlElement, YXmlText, YMap and SplittableString elements. All leaf nodes are always built with using YMap and SplittableString that are used to represent node attributes and text content respectively:
-# YXmlElement
+# YDoc loaded from Lexical data is represented internally as a tree of YXmlText, YMap and SplittableString elements. All leaf nodes are always built with using YMap and SplittableString that are used to represent node attributes and text content respectively:
+# YXmlText
 #     YXmlText
 #         YMap             |___ Text leaf node
 #         SplittableString |
@@ -50,10 +50,10 @@ def test_lexical_parse_in_forward_direction():
 def test_lexical_parse_in_reverse_direction():
     """This tests fully converting the Y format to JSON."""
     ydoc = Y.YDoc()
-    yroot = ydoc.get_xml_element("root")
+    yroot = ydoc.get_xml_text("root")
 
     with ydoc.begin_transaction() as txn:
-        nodes: list[tuple[Y.YXmlElement | Y.YXmlText | dict, dict]] = [
+        nodes: list[tuple[Y.YXmlText, dict]] = [
             (yroot, deepcopy(EXPECTED_JSON["root"]))
         ]
         while nodes:
@@ -63,8 +63,7 @@ def test_lexical_parse_in_reverse_direction():
                     for child in value:
                         if "text" in child:
                             text = child["text"]
-                            del child["text"]
-                            ynode.push_attributes(txn, child)
+                            ynode.push_map(txn, {k: v for k, v in child.items() if k != "text"})
                             ynode.push(txn, text)
                         else:
                             ychild = ynode.push_xml_text(txn)
@@ -72,7 +71,7 @@ def test_lexical_parse_in_reverse_direction():
                 else:
                     ynode.set_attribute(txn, key, value)
 
-    result_json = {"root": yroot.to_dict()}
+    result_json = {"root": ydoc.get_xml_fragment("root").to_dict()}
 
     print(f"{json.dumps(result_json, indent=4)}")
 
