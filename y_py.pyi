@@ -1145,9 +1145,17 @@ class YXmlText:
         """
         Inserts a new instance of `YXmlText` as a child of this XML node and returns it.
         """
+    def insert_map(self, txn: YTransaction, index: int, attributes: dict) -> YMap:
+        """
+        Inserts a new instance of `YMap` as a child of this XML node and returns it.
+        """
     def push(self, txn: YTransaction, chunk: str):
         """
         Appends a given `attributes` at the end of this `YXmlText` instance.
+        """
+    def push_map(self, txn: YTransaction, attributes: dict) -> YMap:
+        """
+        Appends a new instance of `YMap` as the last child of this XML node and returns it.
         """
     def push_attributes(self, txn: YTransaction, attributes: dict) -> None:
         """

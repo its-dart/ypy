@@ -1,4 +1,5 @@
 use crate::shared_types::CompatiblePyType;
+use crate::y_map::YMap;
 use crate::shared_types::{SubId, TypeWithDoc};
 use crate::y_doc::{WithDoc, YDocInner};
 use lib0::any::Any;
@@ -16,10 +17,11 @@ use yrs::types::{
     TYPE_REFS_XML_TEXT,
 };
 use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
+use yrs::Map;
 use yrs::MapRef;
 use yrs::XmlFragmentRef;
 use yrs::XmlTextRef;
-use yrs::{GetString, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
+use yrs::{GetString, MapPrelim, XmlElementPrelim, XmlElementRef, XmlTextPrelim};
 use yrs::{Observable, SubscriptionId, Text, TransactionMut, XmlFragment, XmlNode};
 
 use crate::shared_types::{DeepSubscription, ShallowSubscription};
@@ -644,7 +646,29 @@ impl YXmlText {
         self._insert_xml_text(txn, index)
     }
 
-    /// Appends a new instance of `YMap` as the last child of this XML node.
+    /// Inserts a new instance of `YMap` as a child of this XML node and returns it.
+    pub fn insert_map(&self, txn: &mut YTransaction, index: u32, attributes: &PyDict) -> PyResult<YMap> {
+        txn.transact(|txn| self._insert_map(txn, index, attributes))?
+    }
+    fn _insert_map(&self, txn: &mut YTransactionInner, index: u32, attributes: &PyDict) -> PyResult<YMap> {
+        let inner_node = self.0.insert_embed(txn, index, MapPrelim::from(HashMap::<String, Any>::new()));
+        for (k, v) in attributes.iter() {
+            let compatible_py_type_value: CompatiblePyType = v.extract()?;
+            inner_node.insert(txn, k.to_string(), Any::try_from(compatible_py_type_value)?);
+        }
+        Ok(inner_node.with_doc(self.0.doc.clone()))
+    }
+
+    /// Appends a new instance of `YMap` as the last child of this XML node and returns it.
+    pub fn push_map(&self, txn: &mut YTransaction, attributes: &PyDict) -> PyResult<YMap> {
+        txn.transact(|txn| self._push_map(txn, attributes))?
+    }
+    fn _push_map(&self, txn: &mut YTransactionInner, attributes: &PyDict) -> PyResult<YMap> {
+        let index = self._len(txn) as u32;
+        self._insert_map(txn, index, attributes)
+    }
+
+    /// Appends a given set of text formatting `attributes` at the end of this XML node.
     pub fn push_attributes(&self, txn: &mut YTransaction, attributes: &PyDict) {
         txn.transact(|txn| self._push_attributes(txn, attributes))
             .unwrap();
