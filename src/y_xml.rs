@@ -11,10 +11,9 @@ use std::mem::ManuallyDrop;
 use std::ops::Deref;
 use std::rc::Rc;
 use yrs::block::ItemContent;
-use yrs::types::text::YChange;
 use yrs::types::xml::{self, TreeWalker, Xml, XmlEvent, XmlTextEvent};
 use yrs::types::{
-    BranchPtr, Delta, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_ELEMENT, TYPE_REFS_XML_FRAGMENT,
+    BranchPtr, ToJson, TYPE_REFS_MAP, TYPE_REFS_XML_ELEMENT, TYPE_REFS_XML_FRAGMENT,
     TYPE_REFS_XML_TEXT,
 };
 use yrs::types::{DeepObservable, EntryChange, Path, PathSegment};
@@ -74,6 +73,10 @@ pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTe
                             children.push(process_xml_text_node(txn, &child_xml_text_ref));
                         }
                         TYPE_REFS_XML_ELEMENT => {
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result)));
+                                child_result = HashMap::new();
+                            }
                             let mut result: HashMap<String, Any> = HashMap::new();
                             process_xml_node(
                                 txn,
@@ -83,6 +86,10 @@ pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTe
                             children.push(Any::Map(Box::new(result)));
                         }
                         TYPE_REFS_XML_FRAGMENT => {
+                            if !child_result.is_empty() {
+                                children.push(Any::Map(Box::new(child_result)));
+                                child_result = HashMap::new();
+                            }
                             let mut result: HashMap<String, Any> = HashMap::new();
                             process_xml_node(
                                 txn,
@@ -700,23 +707,6 @@ impl YXmlText {
     /// Returns an underlying string stored in this `YXmlText` instance.
     pub fn __str__(&self) -> String {
         self.0.with_transaction(|txn| self.0.get_string(txn))
-    }
-
-    pub fn to_delta(&self) -> PyObject {
-        Python::with_gil(|py| {
-            self.0
-                .with_transaction(|txn| {
-                    self.0
-                        .diff(txn, YChange::identity)
-                        .into_iter()
-                        .map(|d| {
-                            Delta::Inserted(d.insert, d.attributes)
-                                .with_doc_into_py(self.0.doc.clone(), py)
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .into_py(py)
-        })
     }
 
     pub fn __repr__(&self) -> String {

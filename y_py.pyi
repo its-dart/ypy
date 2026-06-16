@@ -1179,10 +1179,6 @@ class YXmlText:
         Returns:
             The underlying string stored in this `YXmlText` instance.
         """
-    def to_delta(self) -> List[YTextDelta]:
-        """
-        Returns the contents of this `YXmlText` instance as a delta.
-        """
     def __repr__(self) -> str:
         """
         Returns:

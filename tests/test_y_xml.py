@@ -165,26 +165,27 @@ def test_xml_text_observer():
     assert delta == None
 
 
-def test_xml_text_to_delta_preserves_embedded_xml_order():
+def test_xml_text_to_dict_preserves_embedded_xml_order():
     doc = Y.YDoc()
-    root = doc.get_xml_text("root")
+    fragment = doc.get_xml_fragment("root")
 
     with doc.begin_transaction() as txn:
+        root = fragment.push_xml_text(txn)
+        root.push_map(txn, {"__type": "text"})
         root.push(txn, "A")
         entity = root.push_xml_element(txn, "entity")
+        entity.set_attribute(txn, "__type", "entity")
         entity.set_attribute(txn, "value", "E")
+        root.push_map(txn, {"__type": "text"})
         root.push(txn, "B")
 
-    delta = root.to_delta()
+    children = fragment.to_dict()["children"][0]["children"]
 
-    assert len(delta) == 3
-    assert delta[0] == {"insert": "A"}
-    assert delta[2] == {"insert": "B"}
-
-    embedded = delta[1]["insert"]
-    assert isinstance(embedded, Y.YXmlElement)
-    assert embedded.name == "entity"
-    assert embedded.get_attribute("value") == "E"
+    assert children == [
+        {"__type": "text", "text": "A"},
+        {"__type": "entity", "value": "E"},
+        {"__type": "text", "text": "B"},
+    ]
 
 
 def test_xml_element_observer():
