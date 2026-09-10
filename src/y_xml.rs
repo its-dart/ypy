@@ -63,6 +63,12 @@ pub fn process_xml_text_node(txn: &TransactionMut<'static>, xml_text_ref: &XmlTe
                                     child_result.insert(k.to_string(), v.clone());
                                 }
                             }
+                            if matches!(child_result.get("__type"), Some(Any::String(kind)) if kind.as_ref() != "linebreak")
+                            {
+                                child_result
+                                    .entry("text".to_string())
+                                    .or_insert_with(|| Any::String("".into()));
+                            }
                         }
                         TYPE_REFS_XML_TEXT => {
                             let child_xml_text_ref = XmlTextRef::from(ptr);
