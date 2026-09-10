@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 mod json_builder;

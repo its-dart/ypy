@@ -6,8 +6,6 @@ from y_py import YMap, YMapEvent
 
 
 def test_get():
-    import y_py as Y
-
     d = Y.YDoc()
     m = d.get_map("map")
 

@@ -77,6 +77,8 @@ impl<'a> TryFrom<&'a PyAny> for CompatiblePyType<'a> {
             Ok(Self::List(list))
         } else if let Ok(dict) = py_any.downcast::<pytypes::PyDict>() {
             Ok(Self::Dict(dict))
+        } else if let Ok(bytes) = py_any.downcast::<pytypes::PyByteArray>() {
+            Ok(Self::ByteArray(bytes))
         } else if let Ok(v) = YPyType::try_from(py_any) {
             Ok(Self::YType(v))
         } else {
@@ -259,6 +261,7 @@ impl<'a> From<CompatiblePyType<'a>> for PyObject {
             CompatiblePyType::String(s) => s.into(),
             CompatiblePyType::List(list) => list.into(),
             CompatiblePyType::Dict(dict) => dict.into(),
+            CompatiblePyType::ByteArray(bytes) => bytes.into(),
             CompatiblePyType::YType(y_type) => y_type.into(),
             CompatiblePyType::None => Python::with_gil(|py| py.None()),
         }
@@ -339,6 +342,10 @@ impl<'a> TryFrom<CompatiblePyType<'a>> for Any {
                     .collect();
                 result.map(|res| Any::Map(Box::new(res)))
             },
+            CompatiblePyType::ByteArray(b) => {
+                let bytes: Vec<u8> = b.extract()?;
+                Ok(Any::Buffer(bytes.into_boxed_slice()))
+            }
             CompatiblePyType::None => Ok(Any::Null),
             CompatiblePyType::YType(v) => Err(MultipleIntegrationError::new_err(format!(
                     "Cannot integrate a nested Ypy object because is already integrated into a YDoc: {v}"
